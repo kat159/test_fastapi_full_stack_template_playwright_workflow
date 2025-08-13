@@ -1,0 +1,177 @@
+name: Playwright Subscription Monitoring
+
+on:
+  schedule:
+    # Run every 6 hours (0 */6 * * *)
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      website_url:
+        description: 'Website URL to test (optional, defaults to environment variable)'
+        required: false
+        type: string
+
+jobs:
+  subscription-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install Playwright
+        run: |
+          npm install playwright@1.54.2
+          npx playwright install chromium
+          
+      - name: Run subscription test
+        env:
+          WEBSITE_URL: ${{ inputs.website_url || secrets.WEBSITE_URL || 'https://denistek.online/' }}
+        run: |
+          node .github/scripts/playwright-subscription-test.js
+          
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: subscription-test-screenshots-${{ github.run_id }}
+          path: |
+            *.png
+          retention-days: 7
+          
+      - name: Upload screenshots on success
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: subscription-success-screenshots-${{ github.run_id }}
+          path: |
+            subscription-final.png
+            subscription-page.png
+          retention-days: 3
+          
+      - name: Send Slack notification on success
+        if: success()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":white_check_mark: *Subscription Test Successful*\n\nPlaywright subscription test completed successfully!"
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Website:*\n<'"$WEBSITE_URL"'|'"$WEBSITE_URL"'>"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Test Email:*\nplaywright@test.com"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Time:*\n<!date^'"$(date +%s)"'^{date_short_pretty} {time}|'"$(date)"'>"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Action:*\nSubscribed to Greg Lam"
+                  }
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View Workflow"
+                    },
+                    "url": "'"$GITHUB_SERVER_URL"'/'"$GITHUB_REPOSITORY"'/actions/runs/'"$GITHUB_RUN_ID"'"
+                  },
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "Visit Website"
+                    },
+                    "url": "'"$WEBSITE_URL"'"
+                  }
+                ]
+              }
+            ]
+          }' \
+          '${{ secrets.SLACK_WEBHOOK_URL_FOR_MONITORING }}'
+        env:
+          WEBSITE_URL: ${{ inputs.website_url || secrets.WEBSITE_URL || 'https://denistek.online/' }}
+          
+      - name: Send Slack notification on failure
+        if: failure()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":x: *Subscription Test Failed*\n\nPlaywright subscription test encountered an error!"
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Website:*\n<'"$WEBSITE_URL"'|'"$WEBSITE_URL"'>"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Test Email:*\nplaywright@test.com"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Time:*\n<!date^'"$(date +%s)"'^{date_short_pretty} {time}|'"$(date)"'>"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Status:*\nFailed during subscription process"
+                  }
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View Workflow"
+                    },
+                    "url": "'"$GITHUB_SERVER_URL"'/'"$GITHUB_REPOSITORY"'/actions/runs/'"$GITHUB_RUN_ID"'"
+                  },
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "Check Website"
+                    },
+                    "url": "'"$WEBSITE_URL"'"
+                  }
+                ]
+              }
+            ]
+          }' \
+          '${{ secrets.SLACK_WEBHOOK_URL_FOR_MONITORING }}'
+        env:
+          WEBSITE_URL: ${{ inputs.website_url || secrets.WEBSITE_URL || 'https://denistek.online/' }}
