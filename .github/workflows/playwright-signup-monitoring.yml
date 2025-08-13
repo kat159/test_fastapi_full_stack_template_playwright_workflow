@@ -1,0 +1,192 @@
+name: Playwright Signup Monitoring
+
+on:
+  schedule:
+    # Run every 2 hours
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+    inputs:
+      website_url:
+        description: 'Website URL to test'
+        required: false
+        default: ''
+
+jobs:
+  playwright-signup-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install Playwright
+      run: |
+        npm install playwright
+        npx playwright install chromium
+        
+    - name: Run Playwright signup test
+      run: |
+        cat > playwright-signup-test.js << 'EOF'
+        const { chromium } = require('playwright');
+        
+        const WEBSITE_URL = process.env.WEBSITE_URL || 'https://denistek.online/';
+        const TEST_EMAIL = 'playwright@test.com';
+        const TEST_PASSWORD = 'TestPassword123!';
+        const TEST_NAME = 'Playwright Test User';
+        
+        async function generateUniqueEmail() {
+          const timestamp = Date.now();
+          const random = Math.random().toString(36).substring(7);
+          // Use playwright@test.com pattern but make it unique
+          return `playwright-${timestamp}-${random}@test.com`;
+        }
+        
+        async function testSignup() {
+          console.log('🚀 Starting Playwright signup test...');
+          console.log(`Target: ${WEBSITE_URL}`);
+          console.log(`Time: ${new Date().toISOString()}`);
+          
+          const browser = await chromium.launch({ 
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+          });
+          
+          try {
+            const context = await browser.newContext();
+            const page = await context.newPage();
+            
+            // Navigate to signup page
+            console.log('📱 Navigating to signup page...');
+            await page.goto(`${WEBSITE_URL}/signup`, { 
+              waitUntil: 'networkidle',
+              timeout: 30000 
+            });
+            
+            // Wait for form elements
+            console.log('🔍 Waiting for signup form...');
+            await page.waitForSelector('input[placeholder="Full Name"]', { timeout: 10000 });
+            await page.waitForSelector('input[placeholder="Email"]', { timeout: 10000 });
+            await page.waitForSelector('input[placeholder="Password"]', { timeout: 10000 });
+            await page.waitForSelector('input[placeholder="Confirm Password"]', { timeout: 10000 });
+            
+            console.log('✅ Signup form loaded successfully');
+            
+            // Generate unique test email
+            const uniqueEmail = await generateUniqueEmail();
+            console.log(`📧 Testing with email: ${uniqueEmail}`);
+            
+            // Fill out the form
+            console.log('📝 Filling signup form...');
+            await page.fill('input[placeholder="Full Name"]', TEST_NAME);
+            await page.fill('input[placeholder="Email"]', uniqueEmail);
+            await page.fill('input[placeholder="Password"]', TEST_PASSWORD);
+            await page.fill('input[placeholder="Confirm Password"]', TEST_PASSWORD);
+            
+            console.log('✅ Form filled successfully');
+            
+            // Submit the form
+            console.log('🚀 Submitting signup form...');
+            const submitButton = page.locator('button[type="submit"]');
+            await submitButton.click();
+            
+            // Wait for response
+            console.log('⏳ Waiting for signup response...');
+            
+            try {
+              // Wait for success indicators
+              await Promise.race([
+                page.waitForURL('**/dashboard*', { timeout: 15000 }),
+                page.waitForURL('**/', { timeout: 15000 }),
+                page.waitForSelector('[data-testid="success"]', { timeout: 15000 }),
+                page.waitForText('success', { timeout: 15000 }),
+                page.waitForText('welcome', { timeout: 15000 })
+              ]);
+              
+              console.log('✅ SIGNUP TEST PASSED - Registration successful!');
+              console.log(`📧 Email: ${uniqueEmail}`);
+              console.log(`🕐 Time: ${new Date().toISOString()}`);
+              
+              return { success: true, email: uniqueEmail };
+              
+            } catch (timeoutError) {
+              // Check for error messages
+              const errorSelectors = [
+                'text=already exists',
+                'text=error',
+                'text=Error',
+                '[role="alert"]',
+                '.error'
+              ];
+              
+              let errorFound = false;
+              for (const selector of errorSelectors) {
+                try {
+                  const errorElement = await page.waitForSelector(selector, { timeout: 2000 });
+                  if (errorElement) {
+                    const errorText = await errorElement.textContent();
+                    console.error(`❌ SIGNUP FAILED: ${errorText}`);
+                    errorFound = true;
+                    break;
+                  }
+                } catch (e) {
+                  // Continue to next selector
+                }
+              }
+              
+              if (!errorFound) {
+                console.error('❌ SIGNUP FAILED: Timeout waiting for response');
+              }
+              
+              // Take screenshot on failure
+              await page.screenshot({ path: 'signup-failure.png', fullPage: true });
+              console.log('📸 Screenshot saved: signup-failure.png');
+              
+              throw new Error('Signup test failed');
+            }
+            
+          } finally {
+            await browser.close();
+          }
+        }
+        
+        // Run the test
+        testSignup()
+          .then((result) => {
+            console.log('🎉 Playwright signup monitoring completed successfully');
+            process.exit(0);
+          })
+          .catch((error) => {
+            console.error('💥 Playwright signup monitoring failed:', error.message);
+            process.exit(1);
+          });
+        EOF
+        
+        node playwright-signup-test.js
+      env:
+        WEBSITE_URL: ${{ github.event.inputs.website_url || secrets.WEBSITE_URL || 'http://localhost' }}
+        
+    - name: Upload screenshot on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: signup-failure-screenshot-${{ github.run_number }}
+        path: signup-failure.png
+        retention-days: 7
+        
+    - name: Notify success
+      if: success()
+      run: |
+        echo "✅ Playwright signup test PASSED!"
+        echo "Registration functionality is working correctly"
+        
+    - name: Notify failure  
+      if: failure()
+      run: |
+        echo "🚨 Playwright signup test FAILED!"
+        echo "Check the logs and screenshots for details"
