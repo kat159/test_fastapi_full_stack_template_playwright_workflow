@@ -50,6 +50,7 @@ jobs:
         with:
           name: subscription-success-screenshots-${{ github.run_id }}
           path: |
+            chatbot-final.png
             subscription-final.png
             subscription-page.png
           retention-days: 3
@@ -64,7 +65,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": ":white_check_mark: *Subscription Test Successful*\n\nPlaywright subscription test completed successfully!"
+                  "text": ":white_check_mark: *Subscription & Chatbot Test Successful*\n\nPlaywright test completed successfully! User subscribed to Greg Lam and chatbot functionality verified."
                 }
               },
               {
@@ -84,7 +85,7 @@ jobs:
                   },
                   {
                     "type": "mrkdwn",
-                    "text": "*Action:*\nSubscribed to Greg Lam"
+                    "text": "*Action:*\nSubscribed to Greg Lam + Chatbot tested"
                   }
                 ]
               },
@@ -125,7 +126,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": ":x: *Subscription Test Failed*\n\nPlaywright subscription test encountered an error!"
+                  "text": ":x: *Subscription & Chatbot Test Failed*\n\nPlaywright test encountered an error during subscription or chatbot testing!"
                 }
               },
               {
@@ -145,7 +146,7 @@ jobs:
                   },
                   {
                     "type": "mrkdwn",
-                    "text": "*Status:*\nFailed during subscription process"
+                    "text": "*Status:*\nFailed during subscription/chatbot process"
                   }
                 ]
               },

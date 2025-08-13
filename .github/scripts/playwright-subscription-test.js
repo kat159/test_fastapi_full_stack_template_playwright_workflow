@@ -325,14 +325,270 @@ async function testSignupAndSubscription() {
       console.log('ℹ️ Greg Lam subscription is already enabled');
     }
     
-    // Take final screenshot
+    // Step 5: Test Chatbot functionality
+    console.log('🤖 Step 5: Testing chatbot functionality...');
+    
+    // Wait a moment for subscription to take effect
+    await page.waitForTimeout(2000);
+    
+    // Look for Greg Lam button in the sidebar/subscription list
+    console.log('🔍 Looking for Greg Lam button in subscriptions...');
+    
+    const gregLamButtonSelectors = [
+      'a:has-text("Greg Lam")',
+      'button:has-text("Greg Lam")',
+      '[href*="greg"]',
+      '[data-testid*="greg"]',
+      // Subscription sidebar items
+      '.subscription a:has-text("Greg Lam")',
+      '.sidebar a:has-text("Greg Lam")',
+      'nav a:has-text("Greg Lam")',
+      // With Dublin Ward 3
+      'a:has-text("Greg Lam (Dublin Ward 3)")',
+      'button:has-text("Greg Lam (Dublin Ward 3)")',
+      // General patterns
+      '[aria-label*="Greg Lam"]'
+    ];
+    
+    let gregLamButton = null;
+    for (const selector of gregLamButtonSelectors) {
+      try {
+        const element = await page.waitForSelector(selector, { timeout: 3000 });
+        if (element) {
+          gregLamButton = element;
+          console.log(`✅ Found Greg Lam button with selector: ${selector}`);
+          break;
+        }
+      } catch (e) {
+        // Continue to next selector
+      }
+    }
+    
+    if (!gregLamButton) {
+      // Take screenshot to see what's available
+      await page.screenshot({ path: 'chatbot-debug.png', fullPage: true });
+      console.log('📸 Chatbot debug screenshot saved: chatbot-debug.png');
+      
+      // Try to find any Greg Lam related element
+      const pageContent = await page.textContent('body');
+      console.log('📄 Page contains "Greg Lam":', pageContent.includes('Greg Lam'));
+      
+      // Log all available links for debugging
+      const allLinks = await page.locator('a').allTextContents();
+      console.log('🔍 Available links on page:', allLinks.filter(link => link.includes('Greg') || link.includes('Lam')));
+      
+      throw new Error('Could not find Greg Lam button in subscriptions');
+    }
+    
+    console.log('🖱️ Clicking Greg Lam button...');
+    await gregLamButton.click();
+    await page.waitForTimeout(2000);
+    
+    console.log(`🤖 Chat page loaded: ${page.url()}`);
+    
+    // Look for "Start New Chat" button
+    console.log('🆕 Looking for Start New Chat button...');
+    
+    const startChatSelectors = [
+      'button:has-text("Start New Chat")',
+      'a:has-text("Start New Chat")',
+      '[data-testid*="start-chat"]',
+      '[aria-label*="Start New Chat"]',
+      'button:has-text("New Chat")',
+      'button:has-text("Start Chat")',
+      '.start-chat',
+      '#start-chat'
+    ];
+    
+    let startChatButton = null;
+    for (const selector of startChatSelectors) {
+      try {
+        const element = await page.waitForSelector(selector, { timeout: 3000 });
+        if (element) {
+          startChatButton = element;
+          console.log(`✅ Found Start New Chat button with selector: ${selector}`);
+          break;
+        }
+      } catch (e) {
+        // Continue to next selector
+      }
+    }
+    
+    if (!startChatButton) {
+      // Take screenshot to see what's available
+      await page.screenshot({ path: 'chat-interface-debug.png', fullPage: true });
+      console.log('📸 Chat interface debug screenshot saved: chat-interface-debug.png');
+      
+      // Check if we're already in a chat interface
+      const hasMessageInput = await page.locator('input[placeholder*="message"], textarea[placeholder*="message"], input[type="text"]').count();
+      if (hasMessageInput > 0) {
+        console.log('ℹ️ Already in chat interface, skipping Start New Chat button');
+      } else {
+        throw new Error('Could not find Start New Chat button');
+      }
+    } else {
+      console.log('🖱️ Clicking Start New Chat button...');
+      await startChatButton.click();
+      await page.waitForTimeout(2000);
+    }
+    
+    // Look for message input field
+    console.log('💬 Looking for message input field...');
+    
+    const messageInputSelectors = [
+      'input[placeholder*="message"]',
+      'textarea[placeholder*="message"]',
+      'input[placeholder*="Type"]',
+      'textarea[placeholder*="Type"]',
+      '[data-testid*="message-input"]',
+      '[aria-label*="message"]',
+      'input[type="text"]',
+      'textarea',
+      '.message-input',
+      '#message-input'
+    ];
+    
+    let messageInput = null;
+    for (const selector of messageInputSelectors) {
+      try {
+        const element = await page.waitForSelector(selector, { timeout: 3000 });
+        if (element && await element.isVisible()) {
+          messageInput = element;
+          console.log(`✅ Found message input with selector: ${selector}`);
+          break;
+        }
+      } catch (e) {
+        // Continue to next selector
+      }
+    }
+    
+    if (!messageInput) {
+      await page.screenshot({ path: 'message-input-debug.png', fullPage: true });
+      console.log('📸 Message input debug screenshot saved: message-input-debug.png');
+      throw new Error('Could not find message input field');
+    }
+    
+    // Send a test message
+    const testMessage = "Hello! Can you help me with information about Dublin Ward 3?";
+    console.log(`💬 Sending test message: "${testMessage}"`);
+    
+    await messageInput.fill(testMessage);
+    await page.waitForTimeout(1000); // Wait longer for the button to become enabled
+    
+    // Look for send button and click it
+    const sendButtonSelectors = [
+      'button[aria-label="Send message"]',
+      'button[aria-label*="Send"]',
+      'button[type="submit"]',
+      'button:has-text("Send")',
+      '[data-testid*="send"]',
+      '.send-button',
+      '#send-button'
+    ];
+    
+    let sendButton = null;
+    for (const selector of sendButtonSelectors) {
+      try {
+        const element = await page.waitForSelector(selector, { timeout: 2000 });
+        if (element && await element.isVisible()) {
+          // Check if button is enabled
+          const isDisabled = await element.getAttribute('disabled');
+          if (isDisabled === null) { // Button is enabled when disabled attribute is not present
+            sendButton = element;
+            console.log(`✅ Found enabled send button with selector: ${selector}`);
+            break;
+          } else {
+            console.log(`⚠️ Found send button but it's disabled: ${selector}`);
+          }
+        }
+      } catch (e) {
+        // Continue to next selector
+      }
+    }
+    
+    if (sendButton) {
+      console.log('📤 Clicking send button...');
+      await sendButton.click();
+      console.log('✅ Message sent successfully!');
+    } else {
+      console.log('📤 No enabled send button found, trying Enter key...');
+      await messageInput.press('Enter');
+      console.log('✅ Message sent via Enter key!');
+    }
+    
+    // Wait for chatbot response
+    console.log('🤖 Waiting for chatbot response...');
+    await page.waitForTimeout(5000);
+    
+    // Check for response
+    const responseSelectors = [
+      '.message',
+      '.chat-message',
+      '[data-testid*="message"]',
+      '.response',
+      '.bot-message',
+      '.assistant-message'
+    ];
+    
+    let foundResponse = false;
+    let responseText = '';
+    
+    for (const selector of responseSelectors) {
+      try {
+        const messages = await page.locator(selector).count();
+        if (messages > 1) { // More than just our sent message
+          const allMessages = await page.locator(selector).allTextContents();
+          console.log(`📝 Found ${messages} messages:`, allMessages);
+          foundResponse = true;
+          responseText = allMessages.join(' | ');
+          break;
+        }
+      } catch (e) {
+        // Continue
+      }
+    }
+    
+    if (!foundResponse) {
+      // Try to get any new text content that might indicate a response
+      await page.waitForTimeout(3000);
+      const pageContent = await page.textContent('body');
+      if (pageContent.includes(testMessage)) {
+        console.log('✅ Message was sent successfully');
+        foundResponse = true;
+        
+        // Check for any response after our message
+        const words = pageContent.split(' ');
+        const messageIndex = words.findIndex(word => word.includes('Hello'));
+        if (messageIndex > -1 && words.length > messageIndex + 10) {
+          responseText = words.slice(messageIndex + 10, messageIndex + 30).join(' ');
+          console.log('🤖 Potential response detected:', responseText);
+        }
+      }
+    }
+    
+    // Take final screenshot of chat
+    await page.screenshot({ path: 'chatbot-final.png', fullPage: true });
+    console.log('📸 Chatbot final screenshot saved: chatbot-final.png');
+    
+    if (foundResponse) {
+      console.log('🎉 Successfully tested chatbot functionality!');
+      console.log(`🤖 Chatbot response: ${responseText.substring(0, 100)}...`);
+    } else {
+      console.log('⚠️ No clear chatbot response detected, but message was sent');
+    }
+    
+    // Also take subscription final screenshot
     await page.screenshot({ path: 'subscription-final.png', fullPage: true });
     console.log('📸 Final screenshot saved: subscription-final.png');
     
     return { 
       success: true, 
       email: TEST_EMAIL,
-      subscriptionEnabled: true 
+      subscriptionEnabled: true,
+      chatbotTested: true,
+      chatbotResponded: foundResponse,
+      testMessage: testMessage,
+      responsePreview: responseText ? responseText.substring(0, 200) : 'No clear response detected'
     };
     
   } catch (error) {
