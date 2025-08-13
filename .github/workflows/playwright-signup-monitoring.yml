@@ -57,9 +57,11 @@ jobs:
             args: ['--no-sandbox', '--disable-setuid-sandbox']
           });
           
+          let page = null;
+          
           try {
             const context = await browser.newContext();
-            const page = await context.newPage();
+            page = await context.newPage();
             
             // Navigate to signup page
             console.log('📱 Navigating to signup page...');
@@ -143,13 +145,20 @@ jobs:
                 console.error('❌ SIGNUP FAILED: Timeout waiting for response');
               }
               
-              // Take screenshot on failure
-              await page.screenshot({ path: 'signup-failure.png', fullPage: true });
-              console.log('📸 Screenshot saved: signup-failure.png');
-              
               throw new Error('Signup test failed');
             }
             
+          } catch (error) {
+            // Take screenshot on any failure
+            if (page) {
+              try {
+                await page.screenshot({ path: 'signup-failure.png', fullPage: true });
+                console.log('📸 Screenshot saved: signup-failure.png');
+              } catch (screenshotError) {
+                console.error('Failed to take screenshot:', screenshotError.message);
+              }
+            }
+            throw error;
           } finally {
             await browser.close();
           }
@@ -171,13 +180,28 @@ jobs:
       env:
         WEBSITE_URL: ${{ github.event.inputs.website_url || secrets.WEBSITE_URL || 'http://localhost' }}
         
+    - name: Check for screenshot file
+      if: failure()
+      run: |
+        if [ -f "signup-failure.png" ]; then
+          echo "Screenshot file found: signup-failure.png"
+          ls -la signup-failure.png
+        else
+          echo "Screenshot file not found"
+          echo "Creating placeholder file for artifact upload"
+          echo "Screenshot capture failed during test execution" > signup-failure.txt
+        fi
+        
     - name: Upload screenshot on failure
       if: failure()
       uses: actions/upload-artifact@v4
       with:
         name: signup-failure-screenshot-${{ github.run_number }}
-        path: signup-failure.png
+        path: |
+          signup-failure.png
+          signup-failure.txt
         retention-days: 7
+        if-no-files-found: warn
         
     - name: Notify success
       if: success()
