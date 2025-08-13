@@ -68,8 +68,75 @@ jobs:
         echo "✅ Playwright signup test PASSED!"
         echo "Registration functionality is working correctly"
         
+    - name: Send Slack notification on success
+      if: success()
+      run: |
+        TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        WEBSITE_URL="${{ github.event.inputs.website_url || secrets.WEBSITE_URL || 'https://denistek.online' }}"
+        
+        curl -X POST -H 'Content-type: application/json' \
+        --data "{
+          \"text\": \"✅ Playwright Signup Test PASSED\",
+          \"blocks\": [
+            {
+              \"type\": \"section\",
+              \"text\": {
+                \"type\": \"mrkdwn\",
+                \"text\": \"*✅ Playwright Signup Test PASSED*\n\n📱 Website: \`${WEBSITE_URL}\`\n🕐 Time: \`${TIMESTAMP}\`\n📧 Test Email: \`playwright@test.com\`\n\n*Registration functionality is working correctly!*\"
+              }
+            },
+            {
+              \"type\": \"context\",
+              \"elements\": [
+                {
+                  \"type\": \"mrkdwn\",
+                  \"text\": \"🔗 <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View workflow run>\"
+                }
+              ]
+            }
+          ]
+        }" \
+        ${{ secrets.SLACK_WEBHOOK_URL_FOR_MONITORING }}
+        
     - name: Notify failure  
       if: failure()
       run: |
         echo "🚨 Playwright signup test FAILED!"
         echo "Check the logs and screenshots for details"
+        
+    - name: Send Slack notification on failure
+      if: failure()
+      run: |
+        TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        WEBSITE_URL="${{ github.event.inputs.website_url || secrets.WEBSITE_URL || 'https://denistek.online' }}"
+        
+        curl -X POST -H 'Content-type: application/json' \
+        --data "{
+          \"text\": \"🚨 Playwright Signup Test FAILED\",
+          \"blocks\": [
+            {
+              \"type\": \"section\",
+              \"text\": {
+                \"type\": \"mrkdwn\",
+                \"text\": \"*🚨 Playwright Signup Test FAILED*\n\n📱 Website: \`${WEBSITE_URL}\`\n🕐 Time: \`${TIMESTAMP}\`\n📧 Test Email: \`playwright@test.com\`\n\n*❌ Registration functionality is not working properly!*\"
+              }
+            },
+            {
+              \"type\": \"section\",
+              \"text\": {
+                \"type\": \"mrkdwn\",
+                \"text\": \"📸 Screenshots and logs available in workflow artifacts\"
+              }
+            },
+            {
+              \"type\": \"context\",
+              \"elements\": [
+                {
+                  \"type\": \"mrkdwn\",
+                  \"text\": \"🔗 <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View workflow run> | 📁 <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts|Download artifacts>\"
+                }
+              ]
+            }
+          ]
+        }" \
+        ${{ secrets.SLACK_WEBHOOK_URL_FOR_MONITORING }}
