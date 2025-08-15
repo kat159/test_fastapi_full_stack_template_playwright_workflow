@@ -6,8 +6,8 @@ on:
     - cron: '0 */2 * * *'
   workflow_dispatch:
     inputs:
-      website_url:
-        description: 'Website URL to test (optional, defaults to environment variable)'
+      website_urls:
+        description: 'Website URLs to test (comma-separated, optional, defaults to environment variable)'
         required: false
         type: string
 
@@ -31,7 +31,7 @@ jobs:
           
       - name: Run chatbot test
         env:
-          WEBSITE_URL: ${{ inputs.website_url || secrets.APP_WEBSITE_URL || 'https://denistek.online' }}
+          WEBSITE_URL: ${{ inputs.website_urls || secrets.APP_WEBSITE_URLS || secrets.APP_WEBSITE_URL || 'https://denistek.online' }}
         run: |
           node .github/scripts/denistek-site-playwright-test.js
           
@@ -50,12 +50,24 @@ jobs:
         with:
           name: chatbot-success-screenshots-${{ github.run_id }}
           path: |
-            chatbot-test-final.png
+            *final*.png
           retention-days: 3
           
       - name: Send Slack notification on success
         if: success()
         run: |
+          # Get the website URLs and count them
+          WEBSITE_URLS="${{ inputs.website_urls || secrets.APP_WEBSITE_URLS || secrets.APP_WEBSITE_URL || 'https://denistek.online' }}"
+          WEBSITE_COUNT=$(echo "$WEBSITE_URLS" | tr ',' '\n' | wc -l)
+          
+          # Create website list for Slack message
+          WEBSITE_LIST=""
+          IFS=',' read -ra URLS <<< "$WEBSITE_URLS"
+          for url in "${URLS[@]}"; do
+            url=$(echo "$url" | xargs)  # trim whitespace
+            WEBSITE_LIST="$WEBSITE_LIST<$url|$url>\n"
+          done
+          
           curl -X POST -H 'Content-type: application/json' \
           --data '{
             "blocks": [
@@ -63,7 +75,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": ":robot_face: *DenisTek Chatbot Test Successful*\n\nPlaywright chatbot test completed successfully! Greg Lam AI is responding properly."
+                  "text": ":robot_face: *DenisTek Chatbot Test Successful*\n\nPlaywright chatbot test completed successfully on '"$WEBSITE_COUNT"' website(s)! Greg Lam AI is responding properly."
                 }
               },
               {
@@ -71,7 +83,7 @@ jobs:
                 "fields": [
                   {
                     "type": "mrkdwn",
-                    "text": "*Website:*\n<'"$WEBSITE_URL"'|'"$WEBSITE_URL"'>"
+                    "text": "*Websites Tested:*\n'"$WEBSITE_LIST"'"
                   },
                   {
                     "type": "mrkdwn",
@@ -83,7 +95,7 @@ jobs:
                   },
                   {
                     "type": "mrkdwn",
-                    "text": "*Status:*\nChatbot responding normally"
+                    "text": "*Status:*\nAll chatbots responding normally"
                   }
                 ]
               },
@@ -97,26 +109,28 @@ jobs:
                       "text": "View Workflow"
                     },
                     "url": "'"$GITHUB_SERVER_URL"'/'"$GITHUB_REPOSITORY"'/actions/runs/'"$GITHUB_RUN_ID"'"
-                  },
-                  {
-                    "type": "button",
-                    "text": {
-                      "type": "plain_text",
-                      "text": "Test Chatbot"
-                    },
-                    "url": "'"$WEBSITE_URL"'/p/greg"
                   }
                 ]
               }
             ]
           }' \
           '${{ secrets.SLACK_WEBHOOK_URL_FOR_MONITORING }}'
-        env:
-          WEBSITE_URL: ${{ inputs.website_url || secrets.WEBSITE_URL || 'https://denistek.online/' }}
           
       - name: Send Slack notification on failure
         if: failure()
         run: |
+          # Get the website URLs and count them
+          WEBSITE_URLS="${{ inputs.website_urls || secrets.APP_WEBSITE_URLS || secrets.APP_WEBSITE_URL || 'https://denistek.online' }}"
+          WEBSITE_COUNT=$(echo "$WEBSITE_URLS" | tr ',' '\n' | wc -l)
+          
+          # Create website list for Slack message
+          WEBSITE_LIST=""
+          IFS=',' read -ra URLS <<< "$WEBSITE_URLS"
+          for url in "${URLS[@]}"; do
+            url=$(echo "$url" | xargs)  # trim whitespace
+            WEBSITE_LIST="$WEBSITE_LIST<$url|$url>\n"
+          done
+          
           curl -X POST -H 'Content-type: application/json' \
           --data '{
             "blocks": [
@@ -124,7 +138,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": ":warning: *DenisTek Chatbot Test Failed*\n\nPlaywright chatbot test encountered an error! Greg Lam AI may not be responding properly."
+                  "text": ":warning: *DenisTek Chatbot Test Failed*\n\nPlaywright chatbot test encountered an error on one or more websites! Greg Lam AI may not be responding properly."
                 }
               },
               {
@@ -132,7 +146,7 @@ jobs:
                 "fields": [
                   {
                     "type": "mrkdwn",
-                    "text": "*Website:*\n<'"$WEBSITE_URL"'|'"$WEBSITE_URL"'>"
+                    "text": "*Websites Tested:*\n'"$WEBSITE_LIST"'"
                   },
                   {
                     "type": "mrkdwn",
@@ -144,7 +158,7 @@ jobs:
                   },
                   {
                     "type": "mrkdwn",
-                    "text": "*Status:*\nChatbot test failed"
+                    "text": "*Status:*\nOne or more chatbot tests failed"
                   }
                 ]
               },
@@ -158,19 +172,9 @@ jobs:
                       "text": "View Workflow"
                     },
                     "url": "'"$GITHUB_SERVER_URL"'/'"$GITHUB_REPOSITORY"'/actions/runs/'"$GITHUB_RUN_ID"'"
-                  },
-                  {
-                    "type": "button",
-                    "text": {
-                      "type": "plain_text",
-                      "text": "Check Website"
-                    },
-                    "url": "'"$WEBSITE_URL"'"
                   }
                 ]
               }
             ]
           }' \
           '${{ secrets.SLACK_WEBHOOK_URL_FOR_MONITORING }}'
-        env:
-          WEBSITE_URL: ${{ inputs.website_url || secrets.WEBSITE_URL || 'https://denistek.online/' }}

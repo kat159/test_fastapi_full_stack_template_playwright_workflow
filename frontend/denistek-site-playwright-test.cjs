@@ -1,8 +1,11 @@
 const { chromium } = require('playwright');
 
-// Remove trailing slash from URL if present
-const rawUrl = process.env.WEBSITE_URL || 'https://denistek.online/';
-const WEBSITE_URL = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl;
+// Parse multiple websites from comma-separated string
+const rawUrls = process.env.WEBSITE_URL || 'https://denistek.online/';
+const WEBSITE_URLS = rawUrls.split(',').map(url => {
+  const trimmedUrl = url.trim();
+  return trimmedUrl.endsWith('/') ? trimmedUrl.slice(0, -1) : trimmedUrl;
+});
 const API_DELETE_USER_URL = 'https://api.denistek.online/api/v1/production-test/users/by-email';
 const TEST_EMAIL = 'playwright@test.com';
 const TEST_PASSWORD = 'TestPassword123!';
@@ -40,9 +43,9 @@ async function deleteTestUser(page) {
   }
 }
 
-async function testSignupAndSubscription() {
+async function testSignupAndSubscription(websiteUrl) {
   console.log('🚀 Starting Playwright signup and subscription test...');
-  console.log(`Target: ${WEBSITE_URL}`);
+  console.log(`Target: ${websiteUrl}`);
   console.log(`Time: ${new Date().toISOString()}`);
   
   const browser = await chromium.launch({ 
@@ -61,7 +64,7 @@ async function testSignupAndSubscription() {
     
     // Step 1: Sign up
     console.log('📱 Step 1: Navigating to signup page...');
-    await page.goto(`${WEBSITE_URL}/signup`, { 
+    await page.goto(`${websiteUrl}/signup`, { 
       waitUntil: 'domcontentloaded',
       timeout: 30000 
     });
@@ -107,7 +110,7 @@ async function testSignupAndSubscription() {
     // Navigate to dashboard if not already there
     if (!page.url().includes('/dashboard') && !page.url().includes('/admin')) {
       console.log('🏠 Navigating to dashboard...');
-      await page.goto(`${WEBSITE_URL}/dashboard`, { waitUntil: 'domcontentloaded', timeout: 10000 });
+      await page.goto(`${websiteUrl}/dashboard`, { waitUntil: 'domcontentloaded', timeout: 10000 });
     }
     
     console.log(`📄 Current page: ${page.url()}`);
@@ -150,8 +153,8 @@ async function testSignupAndSubscription() {
     
     if (!subscriptionLink) {
       // Take screenshot to see what's available
-      await page.screenshot({ path: 'dashboard-debug.png', fullPage: true });
-      console.log('📸 Dashboard screenshot saved: dashboard-debug.png');
+      await page.screenshot({ path: `dashboard-debug-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`, fullPage: true });
+      console.log(`📸 Dashboard screenshot saved: dashboard-debug-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`);
       
       // Log all available links for debugging
       const allLinks = await page.locator('a').allTextContents();
@@ -169,9 +172,31 @@ async function testSignupAndSubscription() {
     // Step 4: Find and toggle Greg Lam's switch
     console.log('👤 Step 4: Looking for Greg Lam subscription...');
     
+    // Look for Greg Lam in various ways
+    const gregLamSelectors = [
+      // Text containing Greg Lam
+      ':has-text("Greg Lam")',
+      ':has-text("Greg Lam (Dublin Ward 3)")',
+      // Switch near Greg Lam text
+      ':has-text("Greg Lam") ~ input[type="checkbox"]',
+      ':has-text("Greg Lam") ~ button',
+      ':has-text("Greg Lam") ~ .switch',
+      // Row containing Greg Lam
+      'tr:has-text("Greg Lam")',
+      'div:has-text("Greg Lam")',
+      // Politics section with Greg Lam
+      '.politics :has-text("Greg Lam")',
+      '[data-category="politics"] :has-text("Greg Lam")',
+      // Generic switch/checkbox patterns
+      'input[type="checkbox"]',
+      '.switch',
+      '[role="switch"]',
+      'button[role="switch"]'
+    ];
+    
     // Take screenshot of subscription page
-    await page.screenshot({ path: 'subscription-page.png', fullPage: true });
-    console.log('📸 Subscription page screenshot saved: subscription-page.png');
+    await page.screenshot({ path: `subscription-page-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`, fullPage: true });
+    console.log(`📸 Subscription page screenshot saved: subscription-page-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`);
     
     // Log page content for debugging
     const pageText = await page.textContent('body');
@@ -368,8 +393,8 @@ async function testSignupAndSubscription() {
     
     if (!gregLamButton) {
       // Take screenshot to see what's available
-      await page.screenshot({ path: 'chatbot-debug.png', fullPage: true });
-      console.log('📸 Chatbot debug screenshot saved: chatbot-debug.png');
+      await page.screenshot({ path: `chatbot-debug-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`, fullPage: true });
+      console.log(`📸 Chatbot debug screenshot saved: chatbot-debug-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`);
       
       // Try to find any Greg Lam related element
       const pageContent = await page.textContent('body');
@@ -418,8 +443,8 @@ async function testSignupAndSubscription() {
     
     if (!startChatButton) {
       // Take screenshot to see what's available
-      await page.screenshot({ path: 'chat-interface-debug.png', fullPage: true });
-      console.log('📸 Chat interface debug screenshot saved: chat-interface-debug.png');
+      await page.screenshot({ path: `chat-interface-debug-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`, fullPage: true });
+      console.log(`📸 Chat interface debug screenshot saved: chat-interface-debug-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`);
       
       // Check if we're already in a chat interface
       const hasMessageInput = await page.locator('input[placeholder*="message"], textarea[placeholder*="message"], input[type="text"]').count();
@@ -465,8 +490,8 @@ async function testSignupAndSubscription() {
     }
     
     if (!messageInput) {
-      await page.screenshot({ path: 'message-input-debug.png', fullPage: true });
-      console.log('📸 Message input debug screenshot saved: message-input-debug.png');
+      await page.screenshot({ path: `message-input-debug-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`, fullPage: true });
+      console.log(`📸 Message input debug screenshot saved: message-input-debug-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`);
       throw new Error('Could not find message input field');
     }
     
@@ -560,8 +585,8 @@ async function testSignupAndSubscription() {
     }
     
     // Take final screenshot of chat
-    await page.screenshot({ path: 'chatbot-final.png', fullPage: true });
-    console.log('📸 Chatbot final screenshot saved: chatbot-final.png');
+    await page.screenshot({ path: `chatbot-final-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`, fullPage: true });
+    console.log(`📸 Chatbot final screenshot saved: chatbot-final-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`);
     
     if (foundResponse) {
       console.log('🎉 Successfully tested chatbot functionality!');
@@ -571,11 +596,12 @@ async function testSignupAndSubscription() {
     }
     
     // Also take subscription final screenshot
-    await page.screenshot({ path: 'subscription-final.png', fullPage: true });
-    console.log('📸 Final screenshot saved: subscription-final.png');
+    await page.screenshot({ path: `subscription-final-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`, fullPage: true });
+    console.log(`📸 Final screenshot saved: subscription-final-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`);
     
     return { 
       success: true, 
+      website: websiteUrl,
       email: TEST_EMAIL,
       subscriptionEnabled: true,
       chatbotTested: true,
@@ -588,8 +614,8 @@ async function testSignupAndSubscription() {
     // Take screenshot on any failure
     if (page) {
       try {
-        await page.screenshot({ path: 'subscription-test-failure.png', fullPage: true });
-        console.log('📸 Failure screenshot saved: subscription-test-failure.png');
+        await page.screenshot({ path: `subscription-test-failure-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`, fullPage: true });
+        console.log(`📸 Failure screenshot saved: subscription-test-failure-${websiteUrl.replace(/[^a-zA-Z0-9]/g, '_')}.png`);
       } catch (screenshotError) {
         console.error('Failed to take screenshot:', screenshotError.message);
       }
@@ -600,15 +626,63 @@ async function testSignupAndSubscription() {
   }
 }
 
+// Main function to run tests on all websites
+async function runAllTests() {
+  console.log(`🌐 Testing ${WEBSITE_URLS.length} website(s): ${WEBSITE_URLS.join(', ')}`);
+  
+  const results = [];
+  let hasError = false;
+  
+  for (let i = 0; i < WEBSITE_URLS.length; i++) {
+    const websiteUrl = WEBSITE_URLS[i];
+    console.log(`\n🎯 Testing website ${i + 1}/${WEBSITE_URLS.length}: ${websiteUrl}`);
+    console.log('='.repeat(80));
+    
+    try {
+      const result = await testSignupAndSubscription(websiteUrl);
+      results.push(result);
+      console.log(`✅ Test completed successfully for ${websiteUrl}`);
+    } catch (error) {
+      console.error(`❌ Test failed for ${websiteUrl}: ${error.message}`);
+      results.push({
+        success: false,
+        website: websiteUrl,
+        error: error.message
+      });
+      hasError = true;
+    }
+    
+    // Add a delay between tests to avoid overwhelming the server
+    if (i < WEBSITE_URLS.length - 1) {
+      console.log('⏳ Waiting 5 seconds before next test...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+  }
+  
+  // Print summary
+  console.log('\n📊 TEST SUMMARY');
+  console.log('='.repeat(80));
+  console.log(`Total websites tested: ${WEBSITE_URLS.length}`);
+  console.log(`Successful tests: ${results.filter(r => r.success).length}`);
+  console.log(`Failed tests: ${results.filter(r => !r.success).length}`);
+  
+  results.forEach((result, index) => {
+    const status = result.success ? '✅' : '❌';
+    console.log(`${status} ${result.website}: ${result.success ? 'SUCCESS' : result.error}`);
+  });
+  
+  return { results, hasError };
+}
+
 // Run the test
-testSignupAndSubscription()
-  .then((result) => {
-    console.log('🎉 Playwright signup and subscription test completed successfully');
-    console.log(`✅ Test result:`, result);
-    process.exit(0);
+runAllTests()
+  .then(({ results, hasError }) => {
+    console.log('🎉 All Playwright tests completed');
+    console.log(`✅ Test results:`, results);
+    process.exit(hasError ? 1 : 0);
   })
   .catch((error) => {
-    console.error('💥 Playwright signup and subscription test failed:', error.message);
+    console.error('💥 Playwright test suite failed:', error.message);
     process.exit(1);
   });
 
