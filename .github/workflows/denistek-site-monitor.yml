@@ -31,7 +31,7 @@ jobs:
           
       - name: Run chatbot test
         env:
-          WEBSITE_URL: ${{ inputs.website_url || secrets.APP_WEBSITE_URL || 'https://denistek.online/' }}
+          WEBSITE_URL: ${{ inputs.website_url || secrets.APP_WEBSITE_URL || 'https://denistek.online' }}
         run: |
           node .github/scripts/denistek-site-playwright-test.js
           

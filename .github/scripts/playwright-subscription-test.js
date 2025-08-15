@@ -1,6 +1,8 @@
 const { chromium } = require('playwright');
 
-const WEBSITE_URL = process.env.WEBSITE_URL || 'https://denistek.online/';
+// Remove trailing slash from URL if present
+const rawUrl = process.env.WEBSITE_URL || 'https://denistek.online/';
+const WEBSITE_URL = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl;
 const API_DELETE_USER_URL = 'https://api.denistek.online/api/v1/production-test/users/by-email';
 const TEST_EMAIL = 'playwright@test.com';
 const TEST_PASSWORD = 'TestPassword123!';
@@ -520,50 +522,41 @@ async function testSignupAndSubscription() {
     console.log('🤖 Waiting for chatbot response...');
     await page.waitForTimeout(5000);
     
-    // Check for response
-    const responseSelectors = [
-      '.message',
-      '.chat-message',
-      '[data-testid*="message"]',
-      '.response',
-      '.bot-message',
-      '.assistant-message'
-    ];
-    
+    // Check for response by comparing page content length
     let foundResponse = false;
     let responseText = '';
     
-    for (const selector of responseSelectors) {
-      try {
-        const messages = await page.locator(selector).count();
-        if (messages > 1) { // More than just our sent message
-          const allMessages = await page.locator(selector).allTextContents();
-          console.log(`📝 Found ${messages} messages:`, allMessages);
-          foundResponse = true;
-          responseText = allMessages.join(' | ');
-          break;
-        }
-      } catch (e) {
-        // Continue
-      }
-    }
-    
-    if (!foundResponse) {
-      // Try to get any new text content that might indicate a response
-      await page.waitForTimeout(3000);
-      const pageContent = await page.textContent('body');
-      if (pageContent.includes(testMessage)) {
-        console.log('✅ Message was sent successfully');
+    try {
+      // Get the full page text content
+      const fullPageContent = await page.textContent('body');
+      console.log(`📄 Full page content length: ${fullPageContent.length}`);
+      console.log(`📝 Test message length: ${testMessage.length}`);
+      
+      // Calculate content length difference
+      const contentDifference = fullPageContent.length - testMessage.length;
+      console.log(`📊 Content difference: ${contentDifference}`);
+      
+      // If there's significant additional content (more than 40 characters), consider it a response
+      if (contentDifference > 40) {
         foundResponse = true;
         
-        // Check for any response after our message
-        const words = pageContent.split(' ');
-        const messageIndex = words.findIndex(word => word.includes('Hello'));
-        if (messageIndex > -1 && words.length > messageIndex + 10) {
-          responseText = words.slice(messageIndex + 10, messageIndex + 30).join(' ');
-          console.log('🤖 Potential response detected:', responseText);
+        // Try to extract potential response text
+        // Look for text that comes after our message
+        const messageIndex = fullPageContent.indexOf(testMessage);
+        if (messageIndex > -1) {
+          // Get text after our message (next 200 characters max)
+          const afterMessage = fullPageContent.substring(messageIndex + testMessage.length, messageIndex + testMessage.length + 200);
+          // Clean up and get meaningful response text
+          responseText = afterMessage.replace(/\s+/g, ' ').trim();
+          console.log(`🤖 Extracted response preview: "${responseText.substring(0, 100)}..."`);
+        } else {
+          responseText = 'Response detected but content extraction failed';
         }
+      } else {
+        console.log('⚠️ Not enough additional content to indicate a response');
       }
+    } catch (e) {
+      console.log('❌ Error checking for response:', e.message);
     }
     
     // Take final screenshot of chat

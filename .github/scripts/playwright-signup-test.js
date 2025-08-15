@@ -1,6 +1,8 @@
 const { chromium } = require('playwright');
 
-const WEBSITE_URL = process.env.WEBSITE_URL || 'https://denistek.online/';
+// Remove trailing slash from URL if present
+const rawUrl = process.env.WEBSITE_URL || 'https://denistek.online/';
+const WEBSITE_URL = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl;
 const API_DELETE_USER_URL = 'https://api.denistek.online/api/v1/production-test/users/by-email';
 const TEST_EMAIL = 'playwright@test.com';
 const TEST_PASSWORD = 'TestPassword123!';
