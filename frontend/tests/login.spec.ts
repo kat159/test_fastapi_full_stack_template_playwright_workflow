@@ -24,14 +24,14 @@ const verifyInput = async (
   await expect(input).toBeEditable()
 }
 
-test("Inputs are visible, empty and editable", async ({ page }) => {
+test("1. Inputs are visible, empty and editable", async ({ page }) => {
   await page.goto("/login")
 
   await verifyInput(page, "Email")
   await verifyInput(page, "Password", { exact: true })
 })
 
-test("Log In button is visible", async ({ page }) => {
+test("2. Log In button is visible", async ({ page }) => {
   await page.goto("/login")
 
   await expect(page.getByRole("button", { name: "Log In" })).toBeVisible()
