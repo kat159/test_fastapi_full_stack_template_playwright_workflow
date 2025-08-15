@@ -63,7 +63,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": ":white_check_mark: *DenisTek Site Monitor - All Tests Passed*\n\nPlaywright end-to-end testing completed successfully! All website functions are working properly."
+                  "text": ":white_check_mark: *DenisTek Site Monitor - All Tests Passed*\n\n"
                 }
               },
               {
