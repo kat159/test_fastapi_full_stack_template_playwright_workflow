@@ -9,6 +9,8 @@
 
 ### 2. 独立聊天机器人测试
 - **本地版本**: `frontend/playwright-chatbot-test.cjs`
+- **GitHub Actions版本**: `.github/scripts/denistek-site-playwright-test.js`
+- **GitHub Actions工作流**: `.github/workflows/denistek-site-monitor.yml`
 
 ### 3. 原始注册测试 (之前创建的)
 - **本地版本**: `frontend/playwright-signup-test.cjs`
@@ -57,7 +59,23 @@
 - ✅ 发送消息成功 (使用正确的发送按钮)
 - ✅ 收到聊天机器人回应: "Hello! I'd be happy to help you with information about Dublin Ward"
 
-## 🛠️ 运行方式
+## � 监控频率
+
+现在有三个不同的监控工作流：
+
+1. **📱 注册监控** (`playwright-signup-monitoring.yml`) - 每2小时运行
+   - 测试用户注册功能
+   - 确保新用户可以成功创建账户
+
+2. **📋 订阅+聊天监控** (`playwright-subscription-monitoring.yml`) - 每6小时运行  
+   - 完整的端到端测试：注册 → 订阅 → 聊天
+   - 测试整个用户流程
+
+3. **🤖 聊天机器人监控** (`denistek-site-monitor.yml`) - 每2小时运行
+   - 仅测试已有用户的聊天机器人功能
+   - 快速检查 AI 响应是否正常
+
+## �🛠️ 运行方式
 
 ### 本地运行
 ```bash
@@ -73,7 +91,9 @@ node playwright-signup-test.cjs
 ```
 
 ### GitHub Actions
-- **自动运行**: 每6小时或每2小时 (注册测试)
+- **完整订阅测试**: 每6小时自动运行
+- **独立聊天机器人测试**: 每2小时自动运行  
+- **注册测试**: 每2小时自动运行
 - **手动触发**: 在 GitHub Actions 页面手动运行
 - **Slack 通知**: 配置 `SLACK_WEBHOOK_URL_FOR_MONITORING` 密钥
 
