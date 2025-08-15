@@ -63,7 +63,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": ":robot_face: *DenisTek Chatbot Test Successful*\n\nPlaywright chatbot test completed successfully! Greg Lam AI is responding properly."
+                  "text": ":white_check_mark: *DenisTek Site Monitor - All Tests Passed*\n\nPlaywright end-to-end testing completed successfully! All website functions are working properly."
                 }
               },
               {
@@ -83,7 +83,7 @@ jobs:
                   },
                   {
                     "type": "mrkdwn",
-                    "text": "*Status:*\nChatbot responding normally"
+                    "text": "*Status:*\nAll tests passed - Site functioning normally"
                   }
                 ]
               },
@@ -102,9 +102,9 @@ jobs:
                     "type": "button",
                     "text": {
                       "type": "plain_text",
-                      "text": "Test Chatbot"
+                      "text": "Visit Website"
                     },
-                    "url": "'"$WEBSITE_URL"'/p/greg"
+                    "url": "'"$WEBSITE_URL"'"
                   }
                 ]
               }
@@ -124,7 +124,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": ":warning: *DenisTek Chatbot Test Failed*\n\nPlaywright chatbot test encountered an error! Greg Lam AI may not be responding properly."
+                  "text": ":x: *DenisTek Site Monitor - Test Failed*\n\nPlaywright end-to-end testing encountered an error! Some website functions may not be working properly."
                 }
               },
               {
@@ -144,7 +144,7 @@ jobs:
                   },
                   {
                     "type": "mrkdwn",
-                    "text": "*Status:*\nChatbot test failed"
+                    "text": "*Status:*\nSite monitoring test failed"
                   }
                 ]
               },
